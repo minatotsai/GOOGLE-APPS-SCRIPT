@@ -1,0 +1,132 @@
+var columnsIndex = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+var sheet = "你的GOOGLE SHEET網址";
+// GOOGLE SHEET 的名稱
+var sheetName = "sheet1";
+// 連結你選擇的GOOGLE SHEET
+var SpreadSheet = SpreadsheetApp.openByUrl(sheet);
+// 取得你選擇的SHEET
+var SheetName = SpreadSheet.getSheetByName(sheetName);
+// 取得最後欄的位址
+var sheetColumn = SheetName.getLastColumn();
+
+// main
+function doGet(e){
+  var replyMsg = '';
+  
+  var param = e.parameter;
+  var type = param.type;
+  
+  switch (type)  {
+    // 取得指定欄的資料
+    case "getOneData":
+      var index = param.getId;
+      var lastRow = 0;
+      
+      var firstIndex = columnsIndex[index] + "1";
+      var secondIndex = columnsIndex[index];
+
+      var maxIndex = SheetName.getRange(firstIndex + ":" + secondIndex).getValues();
+      lastRow = maxIndex.filter(String).length;
+      
+      index = parseInt(index) + 1;
+      replyMsg = getSelectedData(index, lastRow);
+      break;
+    // 新增一個書籍名稱
+    case "addTitle":
+      var title = param.getTitle;
+      var sheetColumn = SheetName.getLastColumn();
+      SheetName.getRange(columnsIndex[sheetColumn] + String(1)).setValue(title);
+      replyMsg = SheetName.getSheetValues(1, 1, 1,parseInt(sheetColumn)+1);
+      break;
+    // 刪除一個書籍名稱
+    case "deleteBook":
+      removeOneColumn(param.deleteId);
+      // get last column's index
+      var sheetColumn = SheetName.getLastColumn();
+      replyMsg = SheetName.getSheetValues(1, 1, 1,sheetColumn);
+      break;
+    // 更新該書籍的集數
+    case "updateData":
+      var title = param.getTitle;
+
+      var dataArray = title.split(",");
+      var sheetColumn = SheetName.getLastColumn();
+      var titleArray = SheetName.getSheetValues(1, 1, 1,sheetColumn);
+      
+      var titleIndex = getTitleIndexForDetial(titleArray, dataArray[0]);
+      // var updataArray = ['書籍名稱','1','2','3','4','5'];
+      removeOneColumn(titleIndex);
+      // 插入一個空欄位
+      SheetName.insertColumns(titleIndex);
+      insertData(dataArray, titleIndex);
+      
+      var lastRow = 0;
+      Logger.log(titleIndex);
+      var firstIndex = columnsIndex[parseInt(titleIndex)-1] + "1";
+      var secondIndex = columnsIndex[parseInt(titleIndex)-1];
+      var maxIndex = SheetName.getRange(firstIndex + ":" + secondIndex).getValues();
+      lastRow = maxIndex.filter(String).length;      
+      replyMsg = getSelectedData(titleIndex, lastRow);
+      break;
+    default:
+      // 取得全部書籍名稱
+      var sheetColumn = SheetName.getLastColumn();
+      replyMsg = SheetName.getSheetValues(1, 1, 1,sheetColumn);
+      break;
+  }
+  return ContentService.createTextOutput(replyMsg);
+}
+
+/* 
+取得指定書籍名稱的所有集數 
+ return array; 
+*/ 
+function getSelectedData( index, lastRow){
+  Logger.log(lastRow);
+  var dataArray = SheetName.getSheetValues(1, index, lastRow, 1);
+  return dataArray;
+}
+
+
+/*
+查詢是否有同樣名稱的書籍
+回傳1=有
+*/
+function findColumnsValue(array, value){
+  var index = 0;
+  
+  for(var i = 0; i<array[0].length;i++){
+    //Logger.log(array[0][i]);
+    if(array[0][i] == value){
+      index +=1;
+    }
+  }
+  return index;
+}
+// 回傳指定書籍名稱的位址
+function getTitleIndexForDetial(array, title){
+  var index = 0;
+  for(var i = 0; i<array[0].length;i++){
+    if(array[0][i] == title){
+      index = parseInt(i)+1;
+    }
+  }
+  return index;
+}
+
+/* 
+新增指定書籍的集數 
+dataArray = ['B1','1','2','3','4','5']; 
+index = 指定書籍位址 
+*/ 
+function insertData(dataArray, index){
+  Logger.log(dataArray);
+  for(var i = 0; i < dataArray.length;i++){
+    SheetName.getRange(columnsIndex[parseInt(index)-1] + String(i+1)).setValue(dataArray[i]);
+  }
+}
+
+// 刪除一整欄
+function removeOneColumn(index){
+  SheetName.deleteColumn(index);
+}
