@@ -1,0 +1,273 @@
+<!-- 這是跟GOOGLE APPS SCRIPT做溝通的HTML --> 
+<!-- 使用Angular 1.7.9、jquery、bootstrap 4  --> 
+
+
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>myBooksApp</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.9/angular.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+</head>
+
+<style>
+div{margin:5px;border:0;padding:0;}
+</style>
+<body>
+	<div class="well span6" ng-app="myApp" ng-controller="myCtrl">
+        <div class="btn-toolbar mb-3" role="toolbar" aria-label="Toolbar with button groups">
+            <div class="btn-group mr-2" role="group" aria-label="First group">
+                <button type="button" class="btn btn-secondary btn-sm" ng-click="showAll()">全部書籍</button>
+            </div>
+            <div class="btn-group mr-2" role="group" aria-label="Second group">
+                <button type="button" class="btn btn-secondary btn-sm" ng-click="clkInsertBook()">新增書籍</button>
+            </div>
+        </div>
+
+        <!-- 下方畫面 -->
+        <!-- <div id="books">
+            <label  ng-repeat="(key,value) in name" id="{{key}}" ng-click="clickEvent(key,value)">{{value}}</label>
+        </div> -->
+        <div id="books" class="btn-group-vertical">
+            <!-- <label  ng-repeat="(key,value) in name" id="{{key}}" ng-click="clickEvent(key,value)">{{value}}</label> -->
+            <div ng-repeat="(key,value) in name" class="btn-group" >
+                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-toggle="dropdown">
+                    {{value}}
+                </button>
+                <div class="dropdown-menu">
+                    <button class="dropdown-item" ng-click="clickEvent(key)" id="{{key}}">詳細</button>
+                    <button class="dropdown-item" ng-click="removeBook(key)">移除</button>
+                    <button class="dropdown-item" ng-click="cancel()">取消</button>
+                </div>
+            </div>
+        </div>
+        <div id="selectedData" style="display:none">
+            <!-- <div>
+                <label ng-repeat="(key,value) in list" id="{{key}}">{{value}}
+                    <input type="checkbox" value="{{key}}">
+                </label>
+            </div>  -->
+            <div>
+                <input type="number" ng-model="setBookUnit" min="1" max="100">
+                <button class="" ng-click="insertBookUnit()" id="insertBtn">新增集數</button>
+                <button class="" ng-click="deleteBookUnit()" id="deleteBtn">刪除集數</button>
+            </div> 
+            <div class="form-check" ng-repeat="(key,value) in list.slice(1,enteries.length)">
+                <input class="form-check-input" type="checkbox" value="{{value}}" id="checkBoxValue" name="checkBoxValue[]">
+                <label class="form-check-label" for="defaultCheck1">
+                    {{list[0]}}({{value}})
+                </label>
+            </div>
+
+
+        </div>
+        <div id="addBook" style="display:none">
+            <div>
+                <input type="text" ng-model="setBookName">
+                <button class="" ng-click="insertBook()"">新增</button>
+            </div> 
+        </div>
+    </div>
+		<!-- <label>Name:</label>
+		<input type="text" placeholder="Enter a name here" ng-model="name">
+		<hr>
+        <p>your input: {{ name }}</p> -->
+            
+</body>
+</html>
+
+
+
+<script>
+
+    var app = angular.module('myApp', []);
+    var sheetUrl = '你的google apps script網址';
+    app.controller('myCtrl', function ( $scope, $http, $window){
+        
+        mainScreen();
+        
+        // 點擊全部書籍
+        $scope.showAll = function() {
+            mainScreen(); 
+        };
+
+        // 點擊詳細
+        $scope.clickEvent = function(id) {
+            getDetail(id);
+        };
+
+        // 點擊移除
+        $scope.removeBook = function(id){
+            if ($window.confirm("確定要刪除嗎?")) {
+                deleteBook(id);
+            } else {
+                return false;
+            }
+            
+        };
+
+        // 點擊新增
+        $scope.insertBook = function(){
+            addTitle();
+        };
+
+        // 點擊新增書籍
+        $scope.clkInsertBook = function(){
+            $('#books').hide();
+            $('#selectedData').hide();
+            $('#addBook').show();
+        }
+
+        // 點集移除書籍
+        $scope.deleteBookUnit = function(){
+            if ($window.confirm("確定要刪除嗎?")) {
+                doDeleteBookUnit();
+            } else {
+                return false;
+            }
+        }
+        $scope.cancel = function() {
+            return false;
+        };
+
+        // 新增集數
+        $scope.insertBookUnit = function() {
+            var insertId = $('#insertBtn').attr('data-id');
+            var setArray = [];
+            $scope.setBookUnit;
+            var allValue = [];
+            
+            if($scope.setBookUnit == undefined || parseInt($scope.setBookUnit) <= 0 || parseInt($scope.setBookUnit) > 100 ){
+                return false;
+            }
+            $("#selectedData #checkBoxValue").each(function ()
+            {
+                allValue.push(parseInt($(this).val()));
+            });
+
+            
+
+            if($.inArray($scope.setBookUnit , allValue) == -1){
+                // 直接PUSH入陣列
+                // 先PUSH -> SORT 再插入
+                allValue.push($scope.setBookUnit);
+                allValue.sort(function(a, b){ 
+                    return a-b});
+                allValue.splice(0, 0, insertId);
+                // console.log(allValue);
+                updateData(allValue.toString());
+            }
+        }
+
+        // 移除集數
+        function doDeleteBookUnit () {
+            var deleteId = $('#deleteBtn').attr('data-id');
+            var allValue = [];
+            
+            $("#selectedData #checkBoxValue:not(:checked)").each(function ()
+            {
+                allValue.push(parseInt($(this).val()));
+            });
+            allValue.splice(0, 0, deleteId);
+            updateData(allValue.toString());
+ 
+        }
+
+        // 全部書籍LIST用
+        function mainScreen(){
+            $http({
+                method: 'GET',
+                dataType: 'json',
+                url: sheetUrl
+            }).then(function successCallback(response) {
+                $('#books').show();
+                $('#selectedData').hide();
+                $('#addBook').hide();
+                $scope.name =response.data.split(",");
+            },function errorCallback(response) {
+                // alert("error");
+                console.log("error");
+            });
+        }
+
+        // 刪除
+        function deleteBook(id){
+            id += 1;
+            console.log(id);
+            $http({
+                method: 'GET',
+                dataType: 'json',
+                followAllRedirects: true,
+                url: sheetUrl+ '?type=deleteBook&deleteId=' + id,
+            }).then(function successCallback(response) {
+                // console.log("success");
+                $scope.name =response.data.split(",");
+            },function errorCallback(response) {
+                console.log("error");
+            });
+        }
+
+        function getDetail(id) {
+            
+            $http({
+                method: 'GET',
+                dataType: 'json',
+                followAllRedirects: true,
+                url: sheetUrl+ '?type=getOneData&getId=' + id,
+            }).then(function successCallback(response) {
+                $('#books').hide();
+                $('#selectedData').show();
+                $('#addBook').hide();
+                $scope.list =response.data.split(",");
+                $scope.list.length <= 1 ? $('#deleteBtn').hide() : $('#deleteBtn').show();
+                $('#insertBtn').attr("data-id",$scope.list[0]);
+                $('#deleteBtn').attr("data-id",$scope.list[0]);
+            },function errorCallback(response) {
+                console.log("error");
+            });
+        }
+
+        function addTitle(){
+            $http({
+                method: 'GET',
+                dataType: 'json',
+                followAllRedirects: true,
+                url: sheetUrl+ '?type=addTitle&getTitle=' + $scope.setBookName,
+            }).then(function successCallback(response) {
+                // console.log(response.data);
+                $('#books').show();
+                $('#selectedData').hide();
+                $('#addBook').hide();
+                $scope.name =response.data.split(",");
+            },function errorCallback(response) {
+                console.log("error");
+            });
+        }
+
+        function updateData(value){
+            $http({
+                method: 'GET',
+                dataType: 'json',
+                followAllRedirects: true,
+                url: sheetUrl+ '?type=updateData&getTitle=' + value,
+            }).then(function successCallback(response) {
+                alert("success!");
+                $('#books').hide();
+                $('#selectedData').show();
+                $('#addBook').hide();
+                $scope.list =response.data.split(",");
+                $scope.list.length <= 1 ? $('#deleteBtn').hide() : $('#deleteBtn').show();
+                $('#insertBtn').attr("data-id",$scope.list[0]);
+                $('#deleteBtn').attr("data-id",$scope.list[0]);
+            },function errorCallback(response) {
+                console.log("error");
+            });
+        }
+
+    });
+
+</script>
